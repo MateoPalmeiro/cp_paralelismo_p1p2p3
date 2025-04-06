@@ -9,11 +9,11 @@
 # se redirige stderr de mpirun a /dev/null para ocultar mensajes de hwloc.
 #
 # para usar el script:
-#   chmod +x run_pi.sh
-#   ./run_pi.sh
+#   chmod +x run_pi2.sh
+#   ./run_pi2.sh
 
 # variable global con el nombre del ejecutable (se asume que esta en el directorio actual)
-EXECUTABLE="pi2"
+EXECUTABLE="pi"
 
 # funcion para formatear el tiempo (en ms) de forma automatica:
 # si el tiempo es mayor o igual a 1000 ms, se muestra en segundos con 2 decimales;
@@ -34,7 +34,7 @@ format_time() {
 }
 
 # lista de valores de n a probar
-n_values=(1 10 100 1000 10000 100000 1000000 10000000 100000000)
+n_values=(1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000)
 
 for n in "${n_values[@]}"
 do
