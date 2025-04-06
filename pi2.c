@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include <mpi.h>
+#include <time.h>
 
-// funcion de bcast con arbol binomial para un long long int
-void mpi_binomial_bcast_long_long(long long int *value, int root, MPI_Comm comm) {
+// funcion de bcast con arbol binomial para un int
+void mpi_binomial_bcast_int(int *value, int root, MPI_Comm comm) {
     int rank, size, d;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
@@ -13,43 +14,42 @@ void mpi_binomial_bcast_long_long(long long int *value, int root, MPI_Comm comm)
         if (rank < (1 << d)) {
             int dest = rank + (1 << d);
             if (dest < size) {
-                MPI_Send(value, 1, MPI_LONG_LONG_INT, dest, 0, comm);
+                MPI_Send(value, 1, MPI_INT, dest, 0, comm);
             }
         } else if (rank < (1 << (d + 1))) {
             int source = rank - (1 << d);
-            MPI_Recv(value, 1, MPI_LONG_LONG_INT, source, 0, comm, MPI_STATUS_IGNORE);
+            MPI_Recv(value, 1, MPI_INT, source, 0, comm, MPI_STATUS_IGNORE);
         }
     }
 }
 
-// funcion de reduction en arbol plano (flattree) para un long long int
-long long int mpi_flattree_reduce_long_long(long long int local_val, int root, MPI_Comm comm) {
-    int rank, size, i;
-    long long int total;
+// funcion de reduction en arbol plano (flattree) para un int
+int mpi_flattree_reduce_int(int local_val, int root, MPI_Comm comm) {
+    int rank, size, i, total;
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
     
     if (rank == root) {
         total = local_val;
-        long long int tmp;
+        int tmp;
         // el proceso root recibe de todos los demas procesos
         for (i = 0; i < size; i++) {
             if (i != root) {
-                MPI_Recv(&tmp, 1, MPI_LONG_LONG_INT, i, 0, comm, MPI_STATUS_IGNORE);
+                MPI_Recv(&tmp, 1, MPI_INT, i, 0, comm, MPI_STATUS_IGNORE);
                 total += tmp;
             }
         }
         return total;
     } else {
         // los demas procesos envian su valor al proceso root
-        MPI_Send(&local_val, 1, MPI_LONG_LONG_INT, root, 0, comm);
+        MPI_Send(&local_val, 1, MPI_INT, root, 0, comm);
         return 0; // valor no util para los demas
     }
 }
 
 int main(int argc, char *argv[]) {
     int rank, size, i;
-    long long int n, count = 0;
+    int n, count = 0;
     double x, y, z, pi, PI25DT = 3.141592653589793238462643;
     
     // inicializacion de mpi
@@ -62,11 +62,11 @@ int main(int argc, char *argv[]) {
     // el proceso 0 lee la entrada
     if (rank == 0) {
         printf("enter the number of points: (0 quits) \n");
-        scanf("%lld", &n);
+        scanf("%d", &n);
     }
     
     // distribuir n a todos los procesos usando bcast con arbol binomial
-    mpi_binomial_bcast_long_long(&n, 0, MPI_COMM_WORLD);
+    mpi_binomial_bcast_int(&n, 0, MPI_COMM_WORLD);
     
     // si n es 0, se termina la ejecucion
     if (n == 0) {
@@ -74,9 +74,12 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     
+    // inicializar generador aleatorio con semilla distinta por proceso
+    srand(time(NULL) + rank);
+    
     // distribucion de la carga de trabajo:
     // cada proceso calcula los puntos asignados segun su rank, usando un bucle for con incremento de size
-    for (i = rank + 1; i <= n; i += size) {
+    for (i = rank; i < n; i += size) {
         // generar puntos aleatorios en el intervalo [0,1]
         x = ((double) rand()) / ((double) RAND_MAX);
         y = ((double) rand()) / ((double) RAND_MAX);
@@ -88,7 +91,7 @@ int main(int argc, char *argv[]) {
     }
     
     // recolectar los resultados parciales usando reduction flattree
-    long long int total_count = mpi_flattree_reduce_long_long(count, 0, MPI_COMM_WORLD);
+    int total_count = mpi_flattree_reduce_int(count, 0, MPI_COMM_WORLD);
     
     // el proceso 0 calcula la aproximacion de pi y muestra el resultado
     if (rank == 0) {
