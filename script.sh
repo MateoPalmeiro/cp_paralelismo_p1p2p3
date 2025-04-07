@@ -1,24 +1,26 @@
 #!/bin/bash
-# script para ejecutar un programa mpi (por ejemplo, pi o pi2) con distintos valores de n
-# el script usa la variable global EXECUTABLE para definir el nombre del ejecutable,
-# y para cada valor de n se imprime:
-#   - "ejecutando <EXECUTABLE> con n = <n>"
-#   - la salida del programa
-#   - "tiempo total (wall-clock, date) = <tiempo_formateado>"
+# Script para ejecutar dos programas MPI (pi y pi2) con distintos valores de n.
+# Para cada valor de n se imprime:
+#   - "Ejecutando <EXECUTABLE> con n = <n>"
+#   - La salida del programa.
+#   - "Tiempo total (wall-clock, date) = <tiempo_formateado>"
+# Al finalizar ambos, se calcula y muestra la diferencia de tiempos:
+#   diferencia = tiempo(pi) - tiempo(pi2)
 #
-# se redirige stderr de mpirun a /dev/null para ocultar mensajes de hwloc.
+# Se redirige stderr de mpirun a /dev/null para ocultar mensajes de hwloc.
 #
-# para usar el script:
-#   chmod +x run_pi2.sh
-#   ./run_pi2.sh
+# Para usar el script:
+#   chmod +x script.sh
+#   ./script.sh
+# 1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000 10000000000 100000000000 1000000000000
+# Variables globales con los nombres de los ejecutables (se asumen en el directorio actual)
+EXECUTABLE1="pi"
+EXECUTABLE2="pi2"
 
-# variable global con el nombre del ejecutable (se asume que esta en el directorio actual)
-EXECUTABLE="pi"
-
-# funcion para formatear el tiempo (en ms) de forma automatica:
-# si el tiempo es mayor o igual a 1000 ms, se muestra en segundos con 2 decimales;
-# si es menor a 1 ms, se muestra en microsegundos;
-# de lo contrario, se muestra en ms sin decimales.
+# Función para formatear el tiempo (en ms) automáticamente:
+# - Si el tiempo es mayor o igual a 1000 ms, se muestra en segundos con 2 decimales.
+# - Si es menor a 1 ms, se muestra en microsegundos.
+# - En otro caso, se muestra en ms sin decimales.
 format_time() {
     local t_ms=$1
     if (( $(echo "$t_ms >= 1000" | bc -l) )); then
@@ -33,26 +35,41 @@ format_time() {
     fi
 }
 
-# lista de valores de n a probar
+# Lista de valores de n a probar
 n_values=(1 10 100 1000 10000 100000 1000000 10000000 100000000 1000000000)
 
 for n in "${n_values[@]}"
 do
-    # se imprime la linea de ejecucion
-    echo "ejecutando ${EXECUTABLE} con n = ${n}"
-    
-    # medir el tiempo wall-clock usando date (en ms)
-    start=$(date +%s%3N)
-    
-    # ejecutar el programa con mpirun y redirigir stderr a /dev/null para ocultar mensajes
-    output=$(mpirun -np 4 ./"${EXECUTABLE}" 2>/dev/null <<< "$n")
-    
-    end=$(date +%s%3N)
-    wall_ms=$(echo "$end - $start" | bc -l)
-    wall_formatted=$(format_time "$wall_ms")
-    
-    # imprimir la salida del programa y el tiempo medido
-    echo "$output"
-    echo "tiempo total (wall-clock, date) = ${wall_formatted}"
+    echo "=============================="
+    echo "Valor de n: ${n}"
+    echo "------------------------------"
+
+    # Ejecutar el primer ejecutable (pi)
+    echo "Ejecutando ${EXECUTABLE1} con n = ${n}"
+    start1=$(date +%s%3N)
+    output1=$(mpirun -np 4 ./"${EXECUTABLE1}" 2>/dev/null <<< "$n")
+    end1=$(date +%s%3N)
+    wall_ms1=$(echo "$end1 - $start1" | bc -l)
+    wall_formatted1=$(format_time "$wall_ms1")
+    echo "$output1"
+    echo "Tiempo total (wall-clock, date) para ${EXECUTABLE1} = ${wall_formatted1}"
+    echo ""
+
+    # Ejecutar el segundo ejecutable (pi2)
+    echo "Ejecutando ${EXECUTABLE2} con n = ${n}"
+    start2=$(date +%s%3N)
+    output2=$(mpirun -np 4 ./"${EXECUTABLE2}" 2>/dev/null <<< "$n")
+    end2=$(date +%s%3N)
+    wall_ms2=$(echo "$end2 - $start2" | bc -l)
+    wall_formatted2=$(format_time "$wall_ms2")
+    echo "$output2"
+    echo "Tiempo total (wall-clock, date) para ${EXECUTABLE2} = ${wall_formatted2}"
+    echo ""
+
+    # Calcular la diferencia de tiempo: tiempo(pi) - tiempo(pi2)
+    diff_ms=$(echo "$wall_ms1 - $wall_ms2" | bc -l)
+    diff_formatted=$(format_time "$diff_ms")
+    echo "Diferencia de tiempo (pi - pi2) = ${diff_formatted}"
+    echo "=============================="
     echo ""
 done
